@@ -11,7 +11,6 @@ export default function VoiceChat() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     // Request microphone permission on component mount
@@ -23,7 +22,8 @@ export default function VoiceChat() {
   // Helper function to convert audio blob to WAV format
   const convertToWav = async (blob: Blob): Promise<Blob> => {
     const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext)();
     const arrayBuffer = await blob.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 

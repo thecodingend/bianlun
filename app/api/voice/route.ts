@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { prisma } from "@/app/lib/prisma";
+import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { Message, Conversation } from "../../../node_modules/.prisma/client";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Get or create conversation
-    let conversation;
+    let conversation: Conversation | null = null;
     if (conversationId) {
       conversation = await prisma.conversation.findUnique({
         where: { id: conversationId },
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const messages: any[] = [
+    const messages: ChatCompletionMessageParam[] = [
       {
         role: "system",
         content: `Your Role:
@@ -176,9 +178,10 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
     ];
 
     // Prepare messages for the AI, including previous context
-    conversation.messages.map((msg: any) => {
+    // @ts-expect-error - conversation.messages is not typed in prisma/client
+    conversation.messages.map((msg: Message) => {
       messages.push({
-        role: msg.role,
+        role: msg.role as "system" | "user",
         content: msg.content,
       });
     });
@@ -192,6 +195,7 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
           text: "Please listen to this audio and respond appropriately",
         },
         {
+          // @ts-expect-error - input_audio is not typed in openai/resources/chat/completions
           type: "input_audio",
           input_audio: {
             data: audioBase64,
@@ -328,7 +332,8 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
 
     // If it's an OpenAI API error, log the details
     if (error && typeof error === "object" && "response" in error) {
-      console.error("API Response error:", (error as any).response?.data);
+      const apiError = error as { response?: { data?: unknown } };
+      console.error("API Response error:", apiError.response?.data);
     }
 
     return NextResponse.json(
