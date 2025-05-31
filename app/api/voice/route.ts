@@ -210,7 +210,49 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
     console.log("Audio format:", audioFormat);
     console.log("Audio type:", audioFile.type);
 
-    // Get AI response using gemini-2.5-pro-preview-05-06
+    // First, transcribe the audio to get the user's message
+    let userTranscription = "Audio message"; // fallback
+    try {
+      const transcriptionResponse = await openai.chat.completions.create({
+        model: "gemini-2.5-flash-preview-05-20",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Please transcribe this audio exactly as spoken. Respond with only the transcription, nothing else.",
+              },
+              {
+                // @ts-expect-error - input_audio is not typed in openai/resources/chat/completions
+                type: "input_audio",
+                input_audio: {
+                  data: audioBase64,
+                  format: audioFormat,
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      userTranscription =
+        transcriptionResponse.choices[0]?.message?.content || "Audio message";
+      console.log("User transcription:", userTranscription);
+    } catch (transcriptionError) {
+      console.error("Transcription error:", transcriptionError);
+      // Continue with the fallback
+    }
+
+    // Update the messages array with the transcribed text for context
+    // Remove the last message and add the transcribed version
+    messages.pop();
+    messages.push({
+      role: "user",
+      content: userTranscription,
+    });
+
+    // Get AI response using gemini-2.5-flash-preview-05-20
     const completion = await openai.chat.completions.create({
       model: "gemini-2.5-flash-preview-05-20",
       messages,
@@ -269,12 +311,12 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
         // Continue without audio rather than failing the whole request
       }
 
-      // Save user message to database (for now without audio URL)
+      // Save user message to database with transcription
       await prisma.message.create({
         data: {
           conversationId: conversation.id,
           role: "user",
-          content: "Audio message", // We'll update this when we add transcription
+          content: userTranscription,
         },
       });
 
@@ -303,7 +345,7 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
         data: {
           conversationId: conversation.id,
           role: "user",
-          content: "Audio message",
+          content: userTranscription,
         },
       });
 
