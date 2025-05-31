@@ -186,30 +186,6 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
       });
     });
 
-    // Add the current audio message
-    messages.push({
-      role: "user",
-      content: [
-        {
-          type: "text",
-          text: "Please listen to this audio and respond appropriately",
-        },
-        {
-          // @ts-expect-error - input_audio is not typed in openai/resources/chat/completions
-          type: "input_audio",
-          input_audio: {
-            data: audioBase64,
-            format: audioFormat,
-          },
-        },
-      ],
-    });
-
-    console.log("messages");
-    console.log(messages);
-    console.log("Audio format:", audioFormat);
-    console.log("Audio type:", audioFile.type);
-
     // First, transcribe the audio to get the user's message
     let userTranscription = "Audio message"; // fallback
     try {
@@ -244,13 +220,14 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
       // Continue with the fallback
     }
 
-    // Update the messages array with the transcribed text for context
-    // Remove the last message and add the transcribed version
-    messages.pop();
+    // Add the transcribed message to the conversation
     messages.push({
       role: "user",
       content: userTranscription,
     });
+
+    console.log("messages for AI response:");
+    console.log(messages);
 
     // Get AI response using gemini-2.5-flash-preview-05-20
     const completion = await openai.chat.completions.create({
@@ -273,7 +250,7 @@ Your ultimate goal is to provide a stimulating and challenging debate experience
           {
             parts: [
               {
-                text: `Say in a friendly and natural voice: ${aiResponse}`,
+                text: `Say in natural voice: ${aiResponse}`,
               },
             ],
           },
